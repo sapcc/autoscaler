@@ -5,4 +5,8 @@ require (
   github.com/digitalocean/godo v1.27.0
   github.com/rancher/go-rancher v0.1.0
   github.com/sapcc/kubernikus v1.0.1-0.20200220123538-38e5c9ce0845
+  github.com/go-openapi/errors v0.19.4
+  github.com/go-openapi/runtime v0.19.15
+  github.com/go-openapi/validate v0.19.7
+  github.com/go-openapi/strfmt v0.19.5
 )

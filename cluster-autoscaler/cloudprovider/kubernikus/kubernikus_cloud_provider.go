@@ -5,11 +5,12 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/pkg/errors"
 	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider"
 	"k8s.io/autoscaler/cluster-autoscaler/config"
-	"k8s.io/autoscaler/cluster-autoscaler/utils/errors"
+	scalererrors "k8s.io/autoscaler/cluster-autoscaler/utils/errors"
 	"k8s.io/klog"
 )
 
@@ -34,7 +35,7 @@ type kubernikusCloudProvider struct {
 
 func newKubernikusCloudProvider(kubernikusManager *kubernikusManager, resourceLimiter *cloudprovider.ResourceLimiter) (cloudprovider.CloudProvider, error) {
 	if err := kubernikusManager.Refresh(); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "refreshing node pools failed")
 	}
 
 	return &kubernikusCloudProvider{
@@ -64,7 +65,7 @@ func (kcp *kubernikusCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudpro
 	return &kubernikusNodeGroup{}, cloudprovider.ErrNotImplemented
 }
 
-func (kcp *kubernikusCloudProvider) Pricing() (cloudprovider.PricingModel, errors.AutoscalerError) {
+func (kcp *kubernikusCloudProvider) Pricing() (cloudprovider.PricingModel, scalererrors.AutoscalerError) {
 	return nil, cloudprovider.ErrNotImplemented
 }
 
@@ -114,6 +115,10 @@ func BuildKubernikus(opts config.AutoscalingOptions, nodeGroupDiscoveryOpts clou
 		if err := json.Unmarshal(body, &cfg); err != nil {
 			klog.Fatalf("Couldn't unmarshal cloud provider configuration %s: %#v", opts.CloudConfig, err)
 		}
+	}
+
+	if err := cfg.validate(); err != nil {
+		klog.Fatalf("Configuration of kubernikus cloud provider invalid: %v", err)
 	}
 
 	manager, err := newKubernikusManager(cfg)

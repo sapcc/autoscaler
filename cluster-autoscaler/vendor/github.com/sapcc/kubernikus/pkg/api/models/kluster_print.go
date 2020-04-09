@@ -10,8 +10,8 @@ import (
 
 func (k Kluster) GetFormats() map[printers.PrintFormat]struct{} {
 	ret := map[printers.PrintFormat]struct{}{
-		printers.Table: {},
-		printers.Human: {},
+		printers.Table: struct{}{},
+		printers.Human: struct{}{},
 	}
 	return ret
 }
@@ -31,10 +31,7 @@ func (k Kluster) Print(format printers.PrintFormat, options printers.PrintOption
 func (k Kluster) printHuman(options printers.PrintOptions) {
 	fmt.Println("Cluster name: ", k.Name)
 	fmt.Println("Cluster state: ", k.Status.Phase)
-	if k.Spec.ClusterCIDR != nil {
-		fmt.Println("Cluster CIDR: ", *k.Spec.ClusterCIDR)
-	}
-
+	fmt.Println("Cluster CIDR: ", k.Spec.ClusterCIDR)
 	fmt.Println("Service CIDR: ", k.Spec.ServiceCIDR)
 	fmt.Println("Cluster node pools: ", len(k.Spec.NodePools))
 	for _, pool := range k.Spec.NodePools {
@@ -51,16 +48,20 @@ func (k *Kluster) printTable(options printers.PrintOptions) {
 		fmt.Print("NAME")
 		fmt.Print("\t")
 		fmt.Print("STATUS")
+		fmt.Print("\t")
+		fmt.Println("MESSAGE")
 	}
 	fmt.Print(k.Name)
 	fmt.Print("\t")
 	fmt.Print(k.Status.Phase)
+	fmt.Print("\t")
+	fmt.Println(k.Status.Message)
 }
 
 func (p NodePool) GetFormats() map[printers.PrintFormat]struct{} {
 	ret := map[printers.PrintFormat]struct{}{
-		printers.Table: {},
-		printers.Human: {},
+		printers.Table: struct{}{},
+		printers.Human: struct{}{},
 	}
 	return ret
 }

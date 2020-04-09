@@ -8,6 +8,7 @@ package models
 import (
 	strfmt "github.com/go-openapi/strfmt"
 
+	"github.com/go-openapi/errors"
 	"github.com/go-openapi/swag"
 )
 
@@ -15,15 +16,20 @@ import (
 // swagger:model NodePoolConfig
 type NodePoolConfig struct {
 
-	// Allow automatic drain and reboot of nodes. Enables OS updates. Required by security policy.
-	AllowReboot *bool `json:"allowReboot"`
+	// repair
+	Repair bool `json:"repair,omitempty"`
 
-	// Allow automatic drain and replacement of nodes. Enables Kubernetes upgrades.
-	AllowReplace *bool `json:"allowReplace"`
+	// upgrade
+	Upgrade bool `json:"upgrade,omitempty"`
 }
 
 // Validate validates this node pool config
 func (m *NodePoolConfig) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
 	return nil
 }
 

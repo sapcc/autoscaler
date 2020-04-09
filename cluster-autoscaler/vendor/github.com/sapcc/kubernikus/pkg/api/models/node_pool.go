@@ -6,8 +6,6 @@ package models
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"strconv"
-
 	strfmt "github.com/go-openapi/strfmt"
 
 	"github.com/go-openapi/errors"
@@ -19,11 +17,8 @@ import (
 // swagger:model NodePool
 type NodePool struct {
 
-	// availability zone
-	AvailabilityZone string `json:"availabilityZone,omitempty"`
-
 	// config
-	Config *NodePoolConfig `json:"config,omitempty"`
+	Config NodePoolConfig `json:"config,omitempty"`
 
 	// flavor
 	// Required: true
@@ -32,22 +27,15 @@ type NodePool struct {
 	// image
 	Image string `json:"image,omitempty"`
 
-	// The specified labels will be added to members of this pool once during initial registration of the node
-	Labels []string `json:"labels"`
-
 	// name
 	// Required: true
-	// Max Length: 20
-	// Pattern: ^[a-z0-9]([-\.a-z0-9]*)?$
+	// Pattern: ^[a-z]([a-z0-9]*)?$
 	Name string `json:"name"`
 
 	// size
 	// Maximum: 127
 	// Minimum: 0
 	Size int64 `json:"size"`
-
-	// The specified taints will be added to members of this pool once during initial registration of the node
-	Taints []string `json:"taints"`
 }
 
 // Validate validates this node pool
@@ -55,26 +43,22 @@ func (m *NodePool) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateConfig(formats); err != nil {
+		// prop
 		res = append(res, err)
 	}
 
 	if err := m.validateFlavor(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateLabels(formats); err != nil {
+		// prop
 		res = append(res, err)
 	}
 
 	if err := m.validateName(formats); err != nil {
+		// prop
 		res = append(res, err)
 	}
 
 	if err := m.validateSize(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateTaints(formats); err != nil {
+		// prop
 		res = append(res, err)
 	}
 
@@ -90,13 +74,11 @@ func (m *NodePool) validateConfig(formats strfmt.Registry) error {
 		return nil
 	}
 
-	if m.Config != nil {
-		if err := m.Config.Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("config")
-			}
-			return err
+	if err := m.Config.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("config")
 		}
+		return err
 	}
 
 	return nil
@@ -111,34 +93,13 @@ func (m *NodePool) validateFlavor(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *NodePool) validateLabels(formats strfmt.Registry) error {
-
-	if swag.IsZero(m.Labels) { // not required
-		return nil
-	}
-
-	for i := 0; i < len(m.Labels); i++ {
-
-		if err := validate.Pattern("labels"+"."+strconv.Itoa(i), "body", string(m.Labels[i]), `^([a-z0-9]([-a-z0-9]*[a-z0-9])(\.[a-z0-9]([-a-z0-9]*[a-z0-9]))*/)?[A-Za-z0-9][-A-Za-z0-9_.]{0,62}=[A-Za-z0-9][-A-Za-z0-9_.]{0,62}$`); err != nil {
-			return err
-		}
-
-	}
-
-	return nil
-}
-
 func (m *NodePool) validateName(formats strfmt.Registry) error {
 
 	if err := validate.RequiredString("name", "body", string(m.Name)); err != nil {
 		return err
 	}
 
-	if err := validate.MaxLength("name", "body", string(m.Name), 20); err != nil {
-		return err
-	}
-
-	if err := validate.Pattern("name", "body", string(m.Name), `^[a-z0-9]([-\.a-z0-9]*)?$`); err != nil {
+	if err := validate.Pattern("name", "body", string(m.Name), `^[a-z]([a-z0-9]*)?$`); err != nil {
 		return err
 	}
 
@@ -157,23 +118,6 @@ func (m *NodePool) validateSize(formats strfmt.Registry) error {
 
 	if err := validate.MaximumInt("size", "body", int64(m.Size), 127, false); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func (m *NodePool) validateTaints(formats strfmt.Registry) error {
-
-	if swag.IsZero(m.Taints) { // not required
-		return nil
-	}
-
-	for i := 0; i < len(m.Taints); i++ {
-
-		if err := validate.Pattern("taints"+"."+strconv.Itoa(i), "body", string(m.Taints[i]), `^([a-z0-9]([-a-z0-9]*[a-z0-9])(\.[a-z0-9]([-a-z0-9]*[a-z0-9]))*/)?[A-Za-z0-9][-A-Za-z0-9_.]{0,62}=[A-Za-z0-9][-A-Za-z0-9_.]{0,62}:(NoSchedule|NoExecute|PreferNoSchedule)$`); err != nil {
-			return err
-		}
-
 	}
 
 	return nil

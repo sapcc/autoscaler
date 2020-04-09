@@ -6,8 +6,6 @@ package models
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"strconv"
-
 	strfmt "github.com/go-openapi/strfmt"
 
 	"github.com/go-openapi/errors"
@@ -21,29 +19,14 @@ type KlusterStatus struct {
 	// apiserver
 	Apiserver string `json:"apiserver,omitempty"`
 
-	// apiserver version
-	ApiserverVersion string `json:"apiserverVersion,omitempty"`
-
-	// chart name
-	ChartName string `json:"chartName,omitempty"`
-
-	// chart version
-	ChartVersion string `json:"chartVersion,omitempty"`
-
-	// dashboard
-	Dashboard string `json:"dashboard,omitempty"`
-
-	// migrations pending
-	MigrationsPending bool `json:"migrationsPending,omitempty"`
+	// message
+	Message string `json:"message,omitempty"`
 
 	// node pools
 	NodePools []NodePoolInfo `json:"nodePools"`
 
 	// phase
 	Phase KlusterPhase `json:"phase,omitempty"`
-
-	// spec version
-	SpecVersion int64 `json:"specVersion"`
 
 	// version
 	Version string `json:"version,omitempty"`
@@ -57,10 +40,12 @@ func (m *KlusterStatus) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateNodePools(formats); err != nil {
+		// prop
 		res = append(res, err)
 	}
 
 	if err := m.validatePhase(formats); err != nil {
+		// prop
 		res = append(res, err)
 	}
 
@@ -74,17 +59,6 @@ func (m *KlusterStatus) validateNodePools(formats strfmt.Registry) error {
 
 	if swag.IsZero(m.NodePools) { // not required
 		return nil
-	}
-
-	for i := 0; i < len(m.NodePools); i++ {
-
-		if err := m.NodePools[i].Validate(formats); err != nil {
-			if ve, ok := err.(*errors.Validation); ok {
-				return ve.ValidateName("nodePools" + "." + strconv.Itoa(i))
-			}
-			return err
-		}
-
 	}
 
 	return nil

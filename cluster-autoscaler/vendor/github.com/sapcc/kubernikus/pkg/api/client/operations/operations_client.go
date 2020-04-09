@@ -54,35 +54,6 @@ func (a *Client) CreateCluster(params *CreateClusterParams, authInfo runtime.Cli
 }
 
 /*
-GetBootstrapConfig gets bootstrap config to onboard a node
-*/
-func (a *Client) GetBootstrapConfig(params *GetBootstrapConfigParams, authInfo runtime.ClientAuthInfoWriter) (*GetBootstrapConfigOK, error) {
-	// TODO: Validate the params before sending
-	if params == nil {
-		params = NewGetBootstrapConfigParams()
-	}
-
-	result, err := a.transport.Submit(&runtime.ClientOperation{
-		ID:                 "GetBootstrapConfig",
-		Method:             "GET",
-		PathPattern:        "/api/v1/clusters/{name}/bootstrap",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"https"},
-		Params:             params,
-		Reader:             &GetBootstrapConfigReader{formats: a.formats},
-		AuthInfo:           authInfo,
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return result.(*GetBootstrapConfigOK), nil
-
-}
-
-/*
 GetClusterCredentials gets user specific credentials to access the cluster
 */
 func (a *Client) GetClusterCredentials(params *GetClusterCredentialsParams, authInfo runtime.ClientAuthInfoWriter) (*GetClusterCredentialsOK, error) {
@@ -108,35 +79,6 @@ func (a *Client) GetClusterCredentials(params *GetClusterCredentialsParams, auth
 		return nil, err
 	}
 	return result.(*GetClusterCredentialsOK), nil
-
-}
-
-/*
-GetClusterCredentialsOIDC gets user specific credentials to access the cluster with o ID c
-*/
-func (a *Client) GetClusterCredentialsOIDC(params *GetClusterCredentialsOIDCParams, authInfo runtime.ClientAuthInfoWriter) (*GetClusterCredentialsOIDCOK, error) {
-	// TODO: Validate the params before sending
-	if params == nil {
-		params = NewGetClusterCredentialsOIDCParams()
-	}
-
-	result, err := a.transport.Submit(&runtime.ClientOperation{
-		ID:                 "GetClusterCredentialsOIDC",
-		Method:             "GET",
-		PathPattern:        "/api/v1/clusters/{name}/credentials/oidc",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"https"},
-		Params:             params,
-		Reader:             &GetClusterCredentialsOIDCReader{formats: a.formats},
-		AuthInfo:           authInfo,
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return result.(*GetClusterCredentialsOIDCOK), nil
 
 }
 
@@ -195,35 +137,6 @@ func (a *Client) GetClusterInfo(params *GetClusterInfoParams, authInfo runtime.C
 		return nil, err
 	}
 	return result.(*GetClusterInfoOK), nil
-
-}
-
-/*
-GetClusterValues gets values for cluster chart admin only
-*/
-func (a *Client) GetClusterValues(params *GetClusterValuesParams, authInfo runtime.ClientAuthInfoWriter) (*GetClusterValuesOK, error) {
-	// TODO: Validate the params before sending
-	if params == nil {
-		params = NewGetClusterValuesParams()
-	}
-
-	result, err := a.transport.Submit(&runtime.ClientOperation{
-		ID:                 "GetClusterValues",
-		Method:             "GET",
-		PathPattern:        "/api/v1/{account}/clusters/{name}/values",
-		ProducesMediaTypes: []string{"application/json"},
-		ConsumesMediaTypes: []string{"application/json"},
-		Schemes:            []string{"https"},
-		Params:             params,
-		Reader:             &GetClusterValuesReader{formats: a.formats},
-		AuthInfo:           authInfo,
-		Context:            params.Context,
-		Client:             params.HTTPClient,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return result.(*GetClusterValuesOK), nil
 
 }
 

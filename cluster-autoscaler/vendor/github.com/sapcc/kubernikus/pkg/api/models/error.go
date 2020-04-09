@@ -20,15 +20,14 @@ type Error struct {
 
 	// The error code
 	// Required: true
-	Code int64 `json:"code"`
+	Code *int64 `json:"code"`
 
 	// link to help page explaining the error in more detail
-	// Format: uri
 	HelpURL strfmt.URI `json:"helpUrl,omitempty"`
 
 	// The error message
 	// Required: true
-	Message string `json:"message"`
+	Message *string `json:"message"`
 }
 
 // Validate validates this error
@@ -36,14 +35,12 @@ func (m *Error) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateCode(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateHelpURL(formats); err != nil {
+		// prop
 		res = append(res, err)
 	}
 
 	if err := m.validateMessage(formats); err != nil {
+		// prop
 		res = append(res, err)
 	}
 
@@ -55,20 +52,7 @@ func (m *Error) Validate(formats strfmt.Registry) error {
 
 func (m *Error) validateCode(formats strfmt.Registry) error {
 
-	if err := validate.Required("code", "body", int64(m.Code)); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *Error) validateHelpURL(formats strfmt.Registry) error {
-
-	if swag.IsZero(m.HelpURL) { // not required
-		return nil
-	}
-
-	if err := validate.FormatOf("helpUrl", "body", "uri", m.HelpURL.String(), formats); err != nil {
+	if err := validate.Required("code", "body", m.Code); err != nil {
 		return err
 	}
 
@@ -77,7 +61,7 @@ func (m *Error) validateHelpURL(formats strfmt.Registry) error {
 
 func (m *Error) validateMessage(formats strfmt.Registry) error {
 
-	if err := validate.RequiredString("message", "body", string(m.Message)); err != nil {
+	if err := validate.Required("message", "body", m.Message); err != nil {
 		return err
 	}
 

@@ -38,6 +38,9 @@ func NewHTTPClient(formats strfmt.Registry) *Kubernikus {
 // using a customizable transport config.
 func NewHTTPClientWithConfig(formats strfmt.Registry, cfg *TransportConfig) *Kubernikus {
 	// ensure nullable parameters have default
+	if formats == nil {
+		formats = strfmt.Default
+	}
 	if cfg == nil {
 		cfg = DefaultTransportConfig()
 	}
@@ -49,11 +52,6 @@ func NewHTTPClientWithConfig(formats strfmt.Registry, cfg *TransportConfig) *Kub
 
 // New creates a new kubernikus client
 func New(transport runtime.ClientTransport, formats strfmt.Registry) *Kubernikus {
-	// ensure nullable parameters have default
-	if formats == nil {
-		formats = strfmt.Default
-	}
-
 	cli := new(Kubernikus)
 	cli.Transport = transport
 

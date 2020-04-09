@@ -1,36 +1,38 @@
 package kubernikus
 
 import (
-	"errors"
 	"os"
+
+	"github.com/pkg/errors"
 )
 
 type (
 	// Config is the configuration of the kubernikus cloud provider.
 	Config struct {
 		ClusterName string `json:"cluster_name"`
-		URL string `json:"url"`
+		URL         string `json:"url"`
 
-		IdentityEndpoint string `json:"-"`
-		UserID  string `json:"-"`
-		Username  string `json:"-"`
-		Password  string `json:"-"`
-		UserDomainID  string `json:"-"`
-		UserDomainName string `json:"-"`
-		ProjectID  string `json:"-"`
-		ProjectName  string `json:"-"`
-		DomainID  string `json:"-"`
-		DomainName  string `json:"-"`
-		ProjectDomainID  string `json:"-"`
-		ProjectDomainName  string `json:"-"`
-		ApplicationCredentialID string `json:"-"`
-		ApplicationCredentialName string `json:"-"`
+		IdentityEndpoint            string `json:"-"`
+		RegionName                  string `json:"-"`
+		UserID                      string `json:"-"`
+		Username                    string `json:"-"`
+		Password                    string `json:"-"`
+		UserDomainID                string `json:"-"`
+		UserDomainName              string `json:"-"`
+		ProjectID                   string `json:"-"`
+		ProjectName                 string `json:"-"`
+		DomainID                    string `json:"-"`
+		DomainName                  string `json:"-"`
+		ProjectDomainID             string `json:"-"`
+		ProjectDomainName           string `json:"-"`
+		ApplicationCredentialID     string `json:"-"`
+		ApplicationCredentialName   string `json:"-"`
 		ApplicationCredentialSecret string `json:"-"`
 	}
 
 	kubernikusManager struct {
-		client  nodeGroupClient
-		nodeGroups       []*kubernikusNodeGroup
+		client     nodeGroupClient
+		nodeGroups []*kubernikusNodeGroup
 		clusterName,
 		token string
 	}
@@ -40,7 +42,9 @@ func (c *Config) fromEnv() {
 	c.ClusterName = os.Getenv("CLUSTER_NAME")
 	c.URL = os.Getenv("KUBERNIKUS_URL")
 
+	// OpenStack credentials.
 	c.IdentityEndpoint = os.Getenv("OS_AUTH_URL")
+	c.RegionName = os.Getenv("OS_REGION_NAME")
 	c.UserID = os.Getenv("OS_USER_ID")
 	c.Username = os.Getenv("OS_USERNAME")
 	c.Password = os.Getenv("OS_PASSWORD")
@@ -58,31 +62,34 @@ func (c *Config) fromEnv() {
 }
 
 func (c *Config) validate() error {
+	// Ensure environment variables were considered.
+	c.fromEnv()
+
 	if c.ClusterName == "" {
 		return errors.New("cluster_name not provided. aborting")
 	}
 
 	if c.URL == "" {
-		return errors.New("url not provided. aborting")
+		return errors.New("kubernikus URL not provided. aborting")
+	}
+
+	if c.IdentityEndpoint == "" {
+		return errors.New("openstack identity URL not provided. aborting")
 	}
 
 	return nil
 }
 
 func newKubernikusManager(cfg Config) (*kubernikusManager, error) {
-	if err := cfg.validate(); err != nil {
-		return nil, err
-	}
-
 	kCli, err := newKubernikusClient(cfg)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "error creating kubernikus client")
 	}
 
 	return &kubernikusManager{
-		client: kCli,
-		nodeGroups:       make([]*kubernikusNodeGroup, 0),
-		clusterName:      cfg.ClusterName,
+		client:      kCli,
+		nodeGroups:  make([]*kubernikusNodeGroup, 0),
+		clusterName: cfg.ClusterName,
 	}, nil
 }
 
@@ -95,9 +102,9 @@ func (km *kubernikusManager) Refresh() error {
 	nodeGroups := make([]*kubernikusNodeGroup, len(nodePools))
 	for idx, np := range nodePools {
 		nodeGroups[idx] = &kubernikusNodeGroup{
-			client: km.client,
+			client:    km.client,
 			clusterID: km.clusterName,
-			nodePool: &np,
+			nodePool:  &np,
 		}
 	}
 

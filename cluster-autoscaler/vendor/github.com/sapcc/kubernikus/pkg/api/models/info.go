@@ -8,6 +8,7 @@ package models
 import (
 	strfmt "github.com/go-openapi/strfmt"
 
+	"github.com/go-openapi/errors"
 	"github.com/go-openapi/swag"
 )
 
@@ -15,21 +16,17 @@ import (
 // swagger:model Info
 type Info struct {
 
-	// available cluster versions
-	AvailableClusterVersions []string `json:"availableClusterVersions,omitempty"`
-
-	// default cluster version
-	DefaultClusterVersion string `json:"defaultClusterVersion,omitempty"`
-
-	// git version
-	GitVersion string `json:"gitVersion,omitempty"`
-
-	// supported cluster versions
-	SupportedClusterVersions []string `json:"supportedClusterVersions,omitempty"`
+	// version
+	Version string `json:"version,omitempty"`
 }
 
 // Validate validates this info
 func (m *Info) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
 	return nil
 }
 

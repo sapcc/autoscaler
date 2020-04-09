@@ -19,7 +19,6 @@ type Kluster struct {
 
 	// name of the cluster
 	// Required: true
-	// Max Length: 20
 	// Pattern: ^[a-z]([-a-z0-9]*[a-z0-9])?$
 	Name string `json:"name"`
 
@@ -35,14 +34,17 @@ func (m *Kluster) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateName(formats); err != nil {
+		// prop
 		res = append(res, err)
 	}
 
 	if err := m.validateSpec(formats); err != nil {
+		// prop
 		res = append(res, err)
 	}
 
 	if err := m.validateStatus(formats); err != nil {
+		// prop
 		res = append(res, err)
 	}
 
@@ -55,10 +57,6 @@ func (m *Kluster) Validate(formats strfmt.Registry) error {
 func (m *Kluster) validateName(formats strfmt.Registry) error {
 
 	if err := validate.RequiredString("name", "body", string(m.Name)); err != nil {
-		return err
-	}
-
-	if err := validate.MaxLength("name", "body", string(m.Name), 20); err != nil {
 		return err
 	}
 

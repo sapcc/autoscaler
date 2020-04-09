@@ -19,19 +19,12 @@ import (
 type KlusterPhase string
 
 const (
-
 	// KlusterPhasePending captures enum value "Pending"
 	KlusterPhasePending KlusterPhase = "Pending"
-
 	// KlusterPhaseCreating captures enum value "Creating"
 	KlusterPhaseCreating KlusterPhase = "Creating"
-
 	// KlusterPhaseRunning captures enum value "Running"
 	KlusterPhaseRunning KlusterPhase = "Running"
-
-	// KlusterPhaseUpgrading captures enum value "Upgrading"
-	KlusterPhaseUpgrading KlusterPhase = "Upgrading"
-
 	// KlusterPhaseTerminating captures enum value "Terminating"
 	KlusterPhaseTerminating KlusterPhase = "Terminating"
 )
@@ -41,7 +34,7 @@ var klusterPhaseEnum []interface{}
 
 func init() {
 	var res []KlusterPhase
-	if err := json.Unmarshal([]byte(`["Pending","Creating","Running","Upgrading","Terminating"]`), &res); err != nil {
+	if err := json.Unmarshal([]byte(`["Pending","Creating","Running","Terminating"]`), &res); err != nil {
 		panic(err)
 	}
 	for _, v := range res {
