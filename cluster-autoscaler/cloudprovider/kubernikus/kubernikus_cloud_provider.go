@@ -2,6 +2,7 @@ package kubernikus
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 
@@ -20,6 +21,9 @@ const (
 
 	// GPULabel is the label added to nodes with GPU resource.
 	GPULabel = ""
+
+	// Label identifying the Kubernikus nodepool.
+	nodePoolLabel = "ccloud.sap.com/nodepool"
 
 	scaleToZeroSupported = false
 )
@@ -57,12 +61,23 @@ func (kcp *kubernikusCloudProvider) NodeGroups() []cloudprovider.NodeGroup {
 }
 
 func (kcp *kubernikusCloudProvider) NodeGroupForNode(node *apiv1.Node) (cloudprovider.NodeGroup, error) {
-	if len(node.Spec.ProviderID) == 0 {
-		klog.Warningf("Node %v has no providerID", node.Name)
-		return nil, nil
+	lbls := node.GetLabels()
+	if lbls == nil {
+		return nil, fmt.Errorf("error identifying nodeGroup. no labels present on node: %s", node.GetName())
 	}
 
-	return &kubernikusNodeGroup{}, cloudprovider.ErrNotImplemented
+	nodePoolName, ok := lbls[nodePoolLabel]
+	if !ok {
+		return nil, fmt.Errorf("error identifying nodeGroup. label %s is not present on node %s", nodePoolLabel, node.GetName())
+	}
+
+	for _, np := range kcp.kubernikusManager.nodeGroups {
+		if nodePoolName == np.Id() {
+			return np, nil
+		}
+	}
+
+	return &kubernikusNodeGroup{}, fmt.Errorf("error identifying nodeGroup. no nodeGroup exists for node %s, nodeGroup %s", node.GetName(), nodePoolName)
 }
 
 func (kcp *kubernikusCloudProvider) Pricing() (cloudprovider.PricingModel, scalererrors.AutoscalerError) {
@@ -70,10 +85,11 @@ func (kcp *kubernikusCloudProvider) Pricing() (cloudprovider.PricingModel, scale
 }
 
 func (kcp *kubernikusCloudProvider) GetAvailableMachineTypes() ([]string, error) {
-	return []string{}, nil
+	return kcp.kubernikusManager.client.GetAvailableMachineTypes()
 }
 
 func (kcp *kubernikusCloudProvider) NewNodeGroup(machineType string, labels map[string]string, systemLabels map[string]string, taints []apiv1.Taint, extraResources map[string]resource.Quantity) (cloudprovider.NodeGroup, error) {
+	// TODO: Creation of a new NodeGroup.
 	return nil, cloudprovider.ErrNotImplemented
 }
 

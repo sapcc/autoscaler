@@ -42,6 +42,10 @@ func (m *doClientMock) DeleteNode(clusterName string, nodePoolName string, nodeN
 	return models.NodePool{}, cloudprovider.ErrNotImplemented
 }
 
+func (m *doClientMock) GetAvailableMachineTypes() ([]string, error) {
+	return nil, cloudprovider.ErrNotImplemented
+}
+
 func testNodeGroup(client nodeGroupClient, nodePool *models.NodePool) *kubernikusNodeGroup {
 	return &kubernikusNodeGroup{
 		client: client,

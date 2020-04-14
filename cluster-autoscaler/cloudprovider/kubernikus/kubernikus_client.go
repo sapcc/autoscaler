@@ -3,17 +3,23 @@ package kubernikus
 import (
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
+	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/identity/v3/tokens"
 	"github.com/pkg/errors"
 	kubernikuscli "github.com/sapcc/kubernikus/pkg/api/client"
 	"github.com/sapcc/kubernikus/pkg/api/client/operations"
 	"github.com/sapcc/kubernikus/pkg/api/models"
-	"k8s.io/autoscaler/cluster-autoscaler/cloudprovider"
+)
+
+const (
+	pollInterval = 5 * time.Second
+	timeout = 5 * time.Minute
 )
 
 type (
@@ -26,16 +32,20 @@ type (
 
 		// DeleteNode terminates the node in the given cluster, node pool and returns the updated node pool or an error.
 		DeleteNode(clusterName string, nodePoolName string, nodeName string) (models.NodePool, error)
+
+		// GetAvailableMachineTypes returns the list of available openstack flavors.
+		GetAvailableMachineTypes() ([]string, error)
 	}
 
 	kubernikusClient struct {
-		token  string
-		client *kubernikuscli.Kubernikus
+		openstackClient *openstackClient
+		client          *kubernikuscli.Kubernikus
 	}
 
 	openstackClient struct {
 		*tokens.AuthOptions
-		provider *gophercloud.ProviderClient
+		provider  *gophercloud.ProviderClient
+		computeV2 *gophercloud.ServiceClient
 	}
 
 	UpdateNodePoolOpts struct {
@@ -64,15 +74,15 @@ func newKubernikusClient(cfg Config) (*kubernikusClient, error) {
 	}
 
 	return &kubernikusClient{
-		token:  os.provider.TokenID,
-		client: kubernikuscli.NewHTTPClientWithConfig(nil, transport),
+		openstackClient: os,
+		client:          kubernikuscli.NewHTTPClientWithConfig(nil, transport),
 	}, nil
 }
 
 func (k *kubernikusClient) authFunc() runtime.ClientAuthInfoWriterFunc {
 	return runtime.ClientAuthInfoWriterFunc(
 		func(req runtime.ClientRequest, reg strfmt.Registry) error {
-			req.SetHeaderParam("X-AUTH-TOKEN", k.token)
+			req.SetHeaderParam("X-AUTH-TOKEN", k.openstackClient.TokenID)
 			return nil
 		})
 }
@@ -91,18 +101,13 @@ func (k *kubernikusClient) UpdateNodePool(clusterName string, nodePoolName strin
 		return models.NodePool{}, err
 	}
 
-	cp := kluster.DeepCopy()
-	for idx, np := range cp.Spec.NodePools {
-		if np.Name == nodePoolName {
-			cp.Spec.NodePools[idx] = updateNodePool(np, opts)
-		}
+	nodePools := make([]models.NodePool, len(kluster.Spec.NodePools))
+	for idx, np := range kluster.Spec.NodePools {
+		nodePools[idx] = updateNodePool(np, nodePoolName, opts)
 	}
+	kluster.Spec.NodePools = nodePools
 
-	if err := k.updateCluster(cp); err != nil {
-		return models.NodePool{}, err
-	}
-
-	updatedKluster, err := k.showCluster(clusterName)
+	updatedKluster, err := k.updateCluster(kluster)
 	if err != nil {
 		return models.NodePool{}, err
 	}
@@ -111,13 +116,50 @@ func (k *kubernikusClient) UpdateNodePool(clusterName string, nodePoolName strin
 }
 
 func (k *kubernikusClient) DeleteNode(clusterName string, nodePoolName string, nodeName string) (models.NodePool, error) {
-	return models.NodePool{}, cloudprovider.ErrNotImplemented
+	if err := k.openstackClient.DeleteServer(nodeName); err != nil {
+		return models.NodePool{}, err
+	}
+
+	kluster, err := k.showCluster(clusterName)
+	if err != nil {
+		return models.NodePool{}, err
+	}
+
+	return filterNodePools(kluster.Spec.NodePools, nodePoolName)
+}
+
+func (k *kubernikusClient) GetAvailableMachineTypes() ([]string, error) {
+	meta, err := k.getOpenstackMetadata()
+	if err != nil {
+		return nil, err
+	}
+
+	machTypes := make([]string, len(meta.Flavors))
+	for idx, t := range meta.Flavors {
+		machTypes[idx] = t.Name
+	}
+	return machTypes, nil
+}
+
+func (k *kubernikusClient) getOpenstackMetadata() (*models.OpenstackMetadata, error) {
+	ok, err := k.client.Operations.GetOpenstackMetadata(
+		operations.NewGetOpenstackMetadataParams(), k.authFunc(),
+	)
+
+	switch err.(type) {
+	case *operations.GetOpenstackMetadataDefault:
+		result := err.(*operations.GetOpenstackMetadataDefault)
+		return nil, errors.Errorf("error getting openstack metadata %s", *result.Payload.Message)
+	case error:
+		return nil, errors.Wrapf(err, "error getting openstack metadata")
+	}
+	return ok.Payload, nil
+
 }
 
 func (k *kubernikusClient) showCluster(clusterName string) (*models.Kluster, error) {
 	ok, err := k.client.Operations.ShowCluster(
-		operations.NewShowClusterParams().WithName(clusterName),
-		k.authFunc(),
+		operations.NewShowClusterParams().WithName(clusterName), k.authFunc(),
 	)
 
 	switch err.(type) {
@@ -130,20 +172,20 @@ func (k *kubernikusClient) showCluster(clusterName string) (*models.Kluster, err
 	return ok.Payload, nil
 }
 
-func (k *kubernikusClient) updateCluster(cluster *models.Kluster) error {
-	_, err := k.client.Operations.UpdateCluster(
-		operations.NewUpdateClusterParams().WithBody(cluster),
-		k.authFunc(),
+func (k *kubernikusClient) updateCluster(cluster *models.Kluster) (*models.Kluster, error) {
+	newCluster, err := k.client.Operations.UpdateCluster(
+		operations.NewUpdateClusterParams().WithName(cluster.Name).WithBody(cluster), k.authFunc(),
 	)
 
 	switch err.(type) {
 	case *operations.UpdateClusterDefault:
 		result := err.(*operations.UpdateClusterDefault)
-		return errors.Errorf(*result.Payload.Message)
+		return nil, errors.Errorf(*result.Payload.Message)
 	case error:
-		return errors.Wrap(err, "Error updating cluster")
+		return nil, errors.Wrap(err, "Error updating cluster")
 	}
-	return nil
+
+	return newCluster.Payload, err
 }
 
 func filterNodePools(nodePools []models.NodePool, nodePoolName string) (models.NodePool, error) {
@@ -156,12 +198,19 @@ func filterNodePools(nodePools []models.NodePool, nodePoolName string) (models.N
 	return models.NodePool{}, fmt.Errorf("no nodepool with name %s found", nodePoolName)
 }
 
-func updateNodePool(nodePool models.NodePool, opts UpdateNodePoolOpts) models.NodePool {
-	if opts.TargetSize != 0 {
-		nodePool.Size = int64(opts.TargetSize)
+func updateNodePool(nodePool models.NodePool, nodePoolName string, opts UpdateNodePoolOpts) models.NodePool {
+	// That's not the nodePool you're looking for.
+	if nodePool.Name != nodePoolName {
+		return nodePool
 	}
 
-	return nodePool
+	newNodePool := nodePool.DeepCopy()
+
+	if opts.TargetSize != 0 {
+		newNodePool.Size = int64(opts.TargetSize)
+	}
+
+	return *newNodePool
 }
 
 func newOpenstackClient(cfg Config) (*openstackClient, error) {
@@ -192,10 +241,18 @@ func newOpenstackClient(cfg Config) (*openstackClient, error) {
 		return nil, errors.Wrap(err, "error creating gophercloud provider client")
 	}
 
-	return &openstackClient{
+	os := &openstackClient{
 		AuthOptions: authOpts,
 		provider:    provider,
-	}, nil
+		computeV2:   nil,
+	}
+
+	if err := os.authenticate(); err != nil {
+		return nil, err
+	}
+
+	os.computeV2, err = openstack.NewComputeV2(provider, gophercloud.EndpointOpts{})
+	return os, err
 }
 
 func (o *openstackClient) authenticate() error {
@@ -204,4 +261,30 @@ func (o *openstackClient) authenticate() error {
 	}
 
 	return openstack.AuthenticateV3(o.provider, o, gophercloud.EndpointOpts{})
+}
+
+func (o *openstackClient) DeleteServer(nodeName string) error {
+	listOpts := servers.ListOpts{
+		Name: nodeName,
+	}
+
+	pager, err := servers.List(o.computeV2, listOpts).AllPages()
+	if err != nil {
+		return err
+	}
+
+	serverList, err := servers.ExtractServers(pager)
+	if err != nil {
+		return err
+	}
+
+	nrServers := len(serverList)
+	if nrServers == 0 {
+		return fmt.Errorf("no a single server found with name: %s", nodeName)
+	} else if nrServers > 1 {
+		return fmt.Errorf("multiple servers found with name: %s", nodeName)
+	}
+
+	err = servers.Delete(o.computeV2, serverList[0].ID).ExtractErr()
+	return err
 }
